@@ -125,7 +125,7 @@ const loginAuthor = async function (req, res) {
       }
     );
     res.setHeader("x-api-key",token)
-    res.status(201).send({ status: true, msg:"Login Successfull! Token sent in header (x-api-key) " });
+    res.status(201).send({ status: true, msg:"Login Successfull! Token sent in header (x-api-key) " , data : { "token " : token}});
   } catch (err) {
     res.status(500).send({ msg: "Internal Server Error", error: err.message });
   }

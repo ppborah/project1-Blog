@@ -109,7 +109,6 @@ const createAuthor = async function (req, res) {
     // created data
     let savedData = await authorModel.create(data);
 
-    // response body
     res.status(201).send({ status: true, msg: savedData });
   } catch (err) {
     res.status(500).send({
@@ -120,7 +119,6 @@ const createAuthor = async function (req, res) {
   }
 };
 
-// LOGIN AUTHOR HANDLER
 const loginAuthor = async function (req, res) {
   try {
     // login credentials
@@ -155,11 +153,9 @@ const loginAuthor = async function (req, res) {
     // JWT generated sent back in response header
     res.setHeader("x-api-key", token);
 
-    // response body on successful response
     res.status(200).send({
       status: true,
-      msg: 'Login Successfull! Token sent in header "x-api-key"',
-      data: { token: token },
+      msg: "Login Successfull! Token sent in header 'x-api-key'",
     });
   } catch (err) {
     res.status(500).send({

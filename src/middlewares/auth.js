@@ -52,7 +52,7 @@ const authorisation = async function (req, res, next) {
     let blog = await blogModel
       .findOne({ _id: blogId })
       .select({ authorId: 1, _id: 0 });
-    // if blog is null => we can't use Object.keys(check) to validate, hence, we use !blog to validate
+    // if blog is null => we can't use Object.keys(blog).length to validate, hence, we use !blog to validate
     if (!blog) {
       return res.status(400).send({
         status: false,

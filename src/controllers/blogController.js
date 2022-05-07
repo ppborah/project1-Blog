@@ -98,7 +98,7 @@ const createBlog = async function (req, res) {
       if (decodedToken.authorId !== req.body.authorId) {
         return res.status(404).send({
           status: false,
-          msg: "Authorisation Failed! authorId is not IAW with token credentials",
+          msg: "Authorisation Failed! authorId is not in accordance with token credentials",
         });
       }
 
@@ -203,7 +203,7 @@ const updateBlog = async function (req, res) {
       isPublished: req.body.isPublished,
       category: req.body.category,
     };
-    //The keys which are not present in req.body have their value as null and in case of boolean type field it would be false, so those keys are deleted by running the for-loop for all the key-value pairs of our object "fieldToUpdate"
+    //The keys which are not present in req.body have their value as undefined and in case of boolean type field it would be false, so those keys are deleted by running the for-loop for all the key-value pairs of our object "fieldToUpdate"
     //Object.entries(fieldToUpdate) would return an array of key-value pairs of the object fieldToUpdate
     for (const [key, value] of Object.entries(fieldToUpdate)) {
       if (!value) delete fieldToUpdate[key];

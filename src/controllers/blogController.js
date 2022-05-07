@@ -5,7 +5,8 @@ const jwt = require("jsonwebtoken");
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------
 
-// function declared to reduce repetitive code
+// functions declared to reduce repetitive code
+
 let arrManipulation = function (conditionArr) {
   for (let i = 0; i < conditionArr.length; i++) {
     // "x" is an element(OBJECT type) inside conditionArr (index according to iteration)
@@ -74,6 +75,13 @@ const createBlog = async function (req, res) {
           msg: " Please enter category for the blog (Required Field)",
         });
 
+      // isDeleted validation
+      if (req.body.isDeleted === true) {
+        return res
+          .status(400)
+          .send({ status: false, msg: "isDeleted cannot be true!" });
+      }
+
       // only spaces validation
       for (const [key, value] of Object.entries(req.body)) {
         if (onlySpaces(`${value}`) == true) {
@@ -84,15 +92,28 @@ const createBlog = async function (req, res) {
         }
       }
 
-      let blog = req.body;
-      let blogCreated = await blogModel.create(blog);
+      // AUTHORISATION: author "x" should not be able to create blog(s) using authorId of author "y"
+      let token = req.headers["x-api-key"];
+      let decodedToken = jwt.verify(token, "project1-group13");
+      if (decodedToken.authorId !== req.body.authorId) {
+        return res.status(404).send({
+          status: false,
+          msg: "Authorisation Failed! authorId is not IAW with token credentials",
+        });
+      }
+
+      let blogCreated = await blogModel.create(data);
       if (data.isPublished == true) {
         blogCreated.publishedAt = new Date();
         await blogCreated.save();
       }
       res.status(201).send({ status: true, data: blogCreated });
-    } else {
-      return res.status(400).send({ status: false, msg: "Bad request" });
+    }
+    // if request body does not contain any blog details
+    else {
+      return res
+        .status(400)
+        .send({ status: false, msg: "Please enter blog details!" });
     }
   } catch (err) {
     res.status(500).send({ msg: "Internal Server Error", error: err.message });
@@ -282,13 +303,14 @@ const deleteBlog = async function (req, res) {
 
     //CASE-3: blogId exists but is not deleted
     else if (check && !check.isDeleted) {
-      let savedData = await blogModel.findOneAndUpdate(
+      // deletion of blog using findOneAndUpdate
+      await blogModel.findOneAndUpdate(
         {
           _id: blogId,
         },
         {
           isDeleted: true,
-          deletedAt: new Date(),
+          deletedAt: new Date(), //deletedAt is added using Date() constructor
         }
       );
       return res.status(200).send();
@@ -302,21 +324,21 @@ const deleteBlog = async function (req, res) {
 
 const deleteBlogsQueryParams = async function (req, res) {
   try {
+    // token is sent in request header "x-api-key"
     let token = req.headers["x-api-key"];
+
+    // JWT is decoded using verify method
     let decodedToken = jwt.verify(token, "project1-group13");
-    let authorId = await authorModel
-      .findOne({ email: decodedToken.email })
-      .select({ _id: 1 });
+
+    // authorId present in token
+    let authorid = decodedToken.authorId;
 
     // Data sent through query params
+    let authoridQP = req.query.authorid; // authoridQP is authorId sent in query params
     let category = req.query.category;
     let tagName = req.query["tag name"];
     let subcategoryName = req.query["subcategory name"];
     let isPublished = req.query.isPublished;
-
-    // authorid contains authorId against email present in the token
-    let authorid = authorId._id;
-    let authoridQP = req.query.authorid;
 
     // if no query param is entered
     if (
@@ -334,7 +356,7 @@ const deleteBlogsQueryParams = async function (req, res) {
 
     // DATA VALIDATIONS:
     if (authoridQP) {
-      // CASE-1(authorId VALIDATION): authorId's value is not an ObjectId
+      // CASE-1: authoridQP's value is not an ObjectId
       if (authoridQP !== "") {
         if (!mongoose.Types.ObjectId.isValid(authoridQP)) {
           return res
@@ -342,7 +364,7 @@ const deleteBlogsQueryParams = async function (req, res) {
             .send({ status: false, msg: "authorId is invalid!" });
         }
       }
-      //CASE-2(authorId VALIDATION): authorId is not present in the database
+      // CASE-2: authoridQP is not present in the database
       let author = await authorModel.findOne({ _id: authoridQP });
       if (!author) {
         return res.status(400).send({
@@ -351,7 +373,7 @@ const deleteBlogsQueryParams = async function (req, res) {
         });
       }
     }
-    // isPublished validation:
+    // CASE-3: isPublished validation:
     let isPublishedArr = ["true", "false", "", undefined]; //undefined(key value is not entered in req.body)
     if (!isPublishedArr.includes(isPublished)) {
       return res.status(400).send({
@@ -371,7 +393,7 @@ const deleteBlogsQueryParams = async function (req, res) {
     //Array containing query params as objects
     let conditionArr = [
       { category: category },
-      { authorId: authorid }, //conditionArr contains authorid against email in the token; user is able to delete only his blogs
+      { authorId: authorid }, //conditionArr contains authorId present in the token; user is able to delete only his blogs
       { tags: tagName },
       { subcategory: subcategoryName },
       { isPublished: isPublished },
@@ -387,6 +409,7 @@ const deleteBlogsQueryParams = async function (req, res) {
       $and: conditionArr,
     });
 
+    // if blogs satisfying the conditions does not exist
     if (Blogs.length === 0) {
       return res
         .status(404)
@@ -395,6 +418,7 @@ const deleteBlogsQueryParams = async function (req, res) {
 
     // If there exists blog(s) satisfying the conditions
     if (Blogs.length !== 0) {
+      // deletion of blogs using updateMany
       let deleteBlogs = await blogModel.updateMany(
         { $and: conditionArr },
         { isDeleted: true, deletedAt: new Date() }
